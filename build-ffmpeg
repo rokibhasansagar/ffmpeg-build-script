@@ -367,7 +367,7 @@ fi
 
 if build "nasm"; then
   download "https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.xz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static --enable-lto
   execute make -j $MJOBS
   execute make install
   build_done "nasm"
@@ -399,8 +399,7 @@ fi
 
 if build "cmake"; then
   download "https://cmake.org/files/LatestRelease/cmake-3.20.2.tar.gz"
-  execute ./bootstrap -- -DCMAKE_USE_OPENSSL=OFF
-  execute ./configure --prefix="${WORKSPACE}"
+  execute ./configure --prefix="${WORKSPACE}" --parallel=2 -- -DCMAKE_USE_OPENSSL=OFF
   execute make -j $MJOBS
   execute make install
   build_done "cmake"
@@ -426,9 +425,9 @@ if build "x264"; then
   cd "${PACKAGES}"/x264-stable || exit
 
   if [[ "$OSTYPE" == "linux-gnu" ]]; then
-    execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic CXXFLAGS="-fPIC"
+    execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic --enable-lto CXXFLAGS="-fPIC"
   else
-    execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic
+    execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic --enable-lto
   fi
 
   execute make -j $MJOBS
@@ -598,7 +597,7 @@ CONFIGURE_OPTIONS+=("--enable-libtheora")
 if $NONFREE_AND_GPL; then
 if build "fdk_aac"; then
   download "https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.1.tar.gz/download?use_mirror=gigenet" "fdk-aac-2.0.1.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static --enable-pic
   execute make -j $MJOBS
   execute make install
 
@@ -702,6 +701,7 @@ download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/dc91b913b6260e85e130
   --disable-doc \
   --disable-shared \
   --enable-pthreads \
+  --enable-pic \
   --enable-lto \
   --enable-static \
   --enable-small \
