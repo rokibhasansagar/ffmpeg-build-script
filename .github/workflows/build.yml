@@ -7,6 +7,8 @@ on:
       - main
     paths-ignore:
       - '*.md'
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build-linux-shared:
