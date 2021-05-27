@@ -693,15 +693,18 @@ fi
 ## FFmpeg
 ##
 
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
+  CONFIGURE_OPTIONS+=("--enable-pic" "--enable-lto" "--enable-stripping" "--disable-large-tests")
+fi
+
 build "ffmpeg"
 download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/c813f5e3436b5ba40b105cdaaaa7b1184baabde7.tar.gz"
 # shellcheck disable=SC2086
 ./configure "${CONFIGURE_OPTIONS[@]}" \
   --disable-debug \
   --disable-doc \
-  --disable-shared \
+  --disable-shared --enable-static \
   --enable-pthreads \
-  --enable-static \
   --enable-small \
   --enable-version3 \
   --extra-cflags="${CFLAGS}" \
