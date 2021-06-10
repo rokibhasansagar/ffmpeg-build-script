@@ -698,7 +698,9 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 fi
 
 build "ffmpeg"
-download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/c813f5e3436b5ba40b105cdaaaa7b1184baabde7.tar.gz"
+# use latest commit from top of version head, not the tagged one
+# https://git.ffmpeg.org/gitweb/ffmpeg.git/shortlog/refs/heads/release/4.4
+download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/8d172d940946dce59841b1c95059f3b38f68ca61.tar.gz"
 # shellcheck disable=SC2086
 ./configure "${CONFIGURE_OPTIONS[@]}" \
   --disable-debug \
