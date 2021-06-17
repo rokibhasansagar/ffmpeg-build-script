@@ -4,7 +4,7 @@
 # LICENSE: https://github.com/markus-perl/ffmpeg-build-script/blob/master/LICENSE
 
 PROGNAME=$(basename "$0")
-VERSION=1.24
+VERSION=1.26
 CWD=$(pwd)
 PACKAGES="$CWD/packages"
 WORKSPACE="$CWD/workspace"
@@ -700,7 +700,9 @@ fi
 build "ffmpeg"
 # use latest commit from top of version head, not the tagged one
 # https://git.ffmpeg.org/gitweb/ffmpeg.git/shortlog/refs/heads/release/4.4
-download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/8d172d940946dce59841b1c95059f3b38f68ca61.tar.gz"
+export LatestHEADSnapshot=$(curl -sL "https://git.ffmpeg.org/gitweb/ffmpeg.git/shortlog/refs/heads/release/4.4" | grep -m1 -A5 "<table class=\"shortlog\">" | grep ".tar.gz" | awk -F'/snapshot/' '{print $2}' | awk -F'"' '{print $1}')
+# Currently, 8d172d940946dce59841b1c95059f3b38f68ca61.tar.gz
+download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${LatestHEADSnapshot}"
 # shellcheck disable=SC2086
 ./configure "${CONFIGURE_OPTIONS[@]}" \
   --disable-debug \
