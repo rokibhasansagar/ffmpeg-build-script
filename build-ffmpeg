@@ -421,8 +421,8 @@ fi
 
 if $NONFREE_AND_GPL; then
 if build "x264"; then
-  download "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.tar.gz" "x264-stable.tar.gz"
-  cd "${PACKAGES}"/x264-stable || exit
+  execute git clone https://code.videolan.org/videolan/x264.git -b stable ${PACKAGES}/x264/
+  cd ${PACKAGES}/x264/ || exit
 
   if [[ "$OSTYPE" == "linux-gnu" ]]; then
     execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic CXXFLAGS="-fPIC"
@@ -441,8 +441,8 @@ fi
 
 if $NONFREE_AND_GPL; then
 if build "x265"; then
-  download "https://github.com/videolan/x265/archive/Release_3.5.tar.gz" "x265-3.5.tar.gz"
-  cd build/linux || exit
+  execute hg clone http://hg.videolan.org/x265/#stable ${PACKAGES}/x265/
+  cd ${PACKAGES}/x265/build/linux || exit
 
   execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=off -DBUILD_SHARED_LIBS=OFF ../../source
   execute make -j $MJOBS
