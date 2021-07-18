@@ -421,7 +421,7 @@ fi
 
 if $NONFREE_AND_GPL; then
 if build "x264"; then
-  git clone https://code.videolan.org/videolan/x264.git -b stable ${PACKAGES}/x264
+  execute git clone https://code.videolan.org/videolan/x264.git ${PACKAGES}/x264
   cd ${PACKAGES}/x264/ || exit
 
   if [[ "$OSTYPE" == "linux-gnu" ]]; then
@@ -441,7 +441,7 @@ fi
 
 if $NONFREE_AND_GPL; then
 if build "x265"; then
-  hg clone http://hg.videolan.org/x265/#stable ${PACKAGES}/x265
+  execute hg clone http://hg.videolan.org/x265 ${PACKAGES}/x265
   cd ${PACKAGES}/x265/build/linux || exit
 
   execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=off -DBUILD_SHARED_LIBS=OFF ../../source
@@ -514,7 +514,7 @@ CONFIGURE_OPTIONS+=("--enable-libvidstab")
 fi
 
 if build "av1"; then
-  download "https://aomedia.googlesource.com/aom/+archive/c0f14141bd71414b004dccd66d48b27570299fa3.tar.gz" "av1.tar.gz" "av1"
+  download "https://aomedia.googlesource.com/aom/+archive/7fadc0e77130efb05f52979b0deaba9b6a1bba6d.tar.gz" "av1.tar.gz" "av1"
   make_dir "$PACKAGES"/aom_build
   cd "$PACKAGES"/aom_build || exit
   if $MACOS_M1; then
