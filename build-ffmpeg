@@ -4,7 +4,7 @@
 # LICENSE: https://github.com/markus-perl/ffmpeg-build-script/blob/master/LICENSE
 
 PROGNAME=$(basename "$0")
-VERSION=1.26
+VERSION=1.28
 CWD=$(pwd)
 PACKAGES="$CWD/packages"
 WORKSPACE="$CWD/workspace"
@@ -194,6 +194,10 @@ usage() {
   echo ""
 }
 
+echo "ffmpeg-build-script v$VERSION"
+echo "========================="
+echo ""
+
 while (($# > 0)); do
   case $1 in
   -h | --help)
@@ -233,10 +237,6 @@ while (($# > 0)); do
   esac
 done
 
-echo "ffmpeg-build-script v$VERSION"
-echo "========================="
-echo ""
-
 if [ -z "$bflag" ]; then
   if [ -z "$cflag" ]; then
     usage
@@ -246,6 +246,10 @@ if [ -z "$bflag" ]; then
 fi
 
 echo "Using $MJOBS make jobs simultaneously."
+
+if $NONFREE_AND_GPL; then
+echo "With GPL and non-free codecs"
+fi
 
 if [ -n "$LDEXEFLAGS" ]; then
   echo "Start the build in full static mode."
@@ -378,22 +382,23 @@ if build "zlib"; then
   execute ./configure --static --prefix="${WORKSPACE}"
   execute make -j $MJOBS
   execute make install
+  LDFLAGS+=" -L/zlib/lib"
   build_done "zlib"
 fi
 
 if $NONFREE_AND_GPL; then
-if build "openssl"; then
-  download "https://www.openssl.org/source/openssl-1.1.1k.tar.gz"
-  if $MACOS_M1; then
-    sed -n 's/\(##### GNU Hurd\)/"darwin64-arm64-cc" => { \n    inherit_from     => [ "darwin-common", asm("aarch64_asm") ],\n    CFLAGS           => add("-Wall"),\n    cflags           => add("-arch arm64 "),\n    lib_cppflags     => add("-DL_ENDIAN"),\n    bn_ops           => "SIXTY_FOUR_BIT_LONG", \n    perlasm_scheme   => "macosx", \n}, \n\1/g' Configurations/10-main.conf
-    execute ./configure --prefix="${WORKSPACE}" no-shared no-asm darwin64-arm64-cc
-  else
-    execute ./config --prefix="${WORKSPACE}" --openssldir="${WORKSPACE}" --with-zlib-include="${WORKSPACE}"/include/ --with-zlib-lib="${WORKSPACE}"/lib no-shared zlib
-  fi
+  if build "openssl"; then
+    download "https://www.openssl.org/source/openssl-1.1.1l.tar.gz"
+    if $MACOS_M1; then
+      sed -n 's/\(##### GNU Hurd\)/"darwin64-arm64-cc" => { \n    inherit_from     => [ "darwin-common", asm("aarch64_asm") ],\n    CFLAGS           => add("-Wall"),\n    cflags           => add("-arch arm64 "),\n    lib_cppflags     => add("-DL_ENDIAN"),\n    bn_ops           => "SIXTY_FOUR_BIT_LONG", \n    perlasm_scheme   => "macosx", \n}, \n\1/g' Configurations/10-main.conf
+      execute ./configure --prefix="${WORKSPACE}" no-shared no-asm darwin64-arm64-cc
+    else
+      execute ./config --prefix="${WORKSPACE}" --openssldir="${WORKSPACE}" --with-zlib-include="${WORKSPACE}"/include/ --with-zlib-lib="${WORKSPACE}"/lib no-shared zlib
+    fi
   execute make -j $MJOBS
   execute make install_sw
   build_done "openssl"
-fi
+  fi
 CONFIGURE_OPTIONS+=("--enable-openssl")
 fi
 
@@ -444,7 +449,7 @@ if build "x265"; then
   execute hg clone http://hg.videolan.org/x265 ${PACKAGES}/x265
   cd ${PACKAGES}/x265/build/linux || exit
 
-  execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DENABLE_SHARED=off -DBUILD_SHARED_LIBS=OFF ../../source
+  execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DENABLE_SHARED=off -DBUILD_SHARED_LIBS=OFF ../../source
   execute make -j $MJOBS
   execute make install
 
@@ -606,12 +611,31 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libfdk-aac")
 fi
 
+if build "libtiff"; then
+  download "https://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz"
+  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  execute make -j $MJOBS
+  execute make install
+  build_done "libtiff"
+fi
+
+if build "libpng"; then
+  download "https://deac-riga.dl.sourceforge.net/project/libpng/libpng16/1.6.37/libpng-1.6.37.tar.gz"
+  export LDFLAGS="${LDFLAGS}"
+  export CPPFLAGS="${CFLAGS}"
+  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+  execute make -j $MJOBS
+  execute make install
+  build_done "libpng"
+fi
+
 ##
 ## image library
 ##
 
 if build "libwebp"; then
-  download "https://github.com/webmproject/libwebp/archive/v1.2.0.tar.gz" "libwebp-1.2.0.tar.gz"
+  download "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.0.tar.gz" "libwebp-1.2.0.tar.gz"
+  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
   make_dir build
   cd build || exit
   execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON ../
