@@ -283,11 +283,16 @@ if ! command_exists "libtoolize"; then
 fi
 
 if ! command_exists "cargo"; then
-  echo "cargo not installed. rav1e will not be available."
+  echo "cargo not installed. rav1e encoder will not be available."
 fi
 
 if ! command_exists "python"; then
   echo "Python command not found. Lv2 filter will not be available."
+  
+  if ! command_exists "meson"; then
+    echo "meson command not found. dav1d decoder will not be available."
+  fi
+  
 fi
 
 ##
@@ -577,14 +582,16 @@ if build "av1"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libaom")
 
-if build "dav1d"; then
-  download "https://code.videolan.org/videolan/dav1d/-/archive/0.9.2/dav1d-0.9.2.tar.gz"
-  make_dir build
-  execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static --enable_tests=false
-  execute ninja -C build
-  execute ninja -C build install
+if command_exists "meson"; then
+  if build "dav1d"; then
+    download "https://code.videolan.org/videolan/dav1d/-/archive/0.9.2/dav1d-0.9.2.tar.gz"
+    make_dir build
+    execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static --enable_tests=false
+    execute ninja -C build
+    execute ninja -C build install
+  fi
+  CONFIGURE_OPTIONS+=("--enable-libdav1d")
 fi
-CONFIGURE_OPTIONS+=("--enable-libdav1d")
 
 ##
 ## audio library
