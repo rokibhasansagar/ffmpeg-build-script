@@ -4,7 +4,7 @@
 # LICENSE: https://github.com/markus-perl/ffmpeg-build-script/blob/master/LICENSE
 
 PROGNAME=$(basename "$0")
-VERSION=1.28
+VERSION=1.28.1
 CWD=$(pwd)
 PACKAGES="$CWD/packages"
 WORKSPACE="$CWD/workspace"
@@ -248,7 +248,7 @@ fi
 echo "Using $MJOBS make jobs simultaneously."
 
 if $NONFREE_AND_GPL; then
-echo "With GPL and non-free codecs"
+  echo "With GPL and non-free codecs"
 fi
 
 if [ -n "$LDEXEFLAGS" ]; then
@@ -411,7 +411,7 @@ CONFIGURE_OPTIONS+=("--enable-openssl")
 fi
 
 if build "cmake"; then
-  download "https://cmake.org/files/LatestRelease/cmake-3.21.0.tar.gz"
+  download "https://cmake.org/files/LatestRelease/cmake-3.21.2.tar.gz"
   execute ./configure --prefix="${WORKSPACE}" --parallel="${MJOBS}" -- -DCMAKE_USE_OPENSSL=OFF
   execute make -j $MJOBS
   execute make install
@@ -443,40 +443,64 @@ if command_exists "cargo"; then
 fi
 
 if $NONFREE_AND_GPL; then
-if build "x264"; then
-  execute git clone https://code.videolan.org/videolan/x264.git ${PACKAGES}/x264
-  cd ${PACKAGES}/x264/ || exit
+  if build "x264"; then
+    execute git clone https://code.videolan.org/videolan/x264.git ${PACKAGES}/x264
+    cd ${PACKAGES}/x264/ || exit
 
-  if [[ "$OSTYPE" == "linux-gnu" ]]; then
-    execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic CXXFLAGS="-fPIC"
-  else
-    execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic
+    if [[ "$OSTYPE" == "linux-gnu" ]]; then
+      execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic CXXFLAGS="-fPIC"
+    else
+      execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic
+    fi
+
+    execute make -j $MJOBS
+    execute make install
+    execute make install-lib-static
+
+    build_done "x264"
   fi
-
-  execute make -j $MJOBS
-  execute make install
-  execute make install-lib-static
-
-  build_done "x264"
-fi
 CONFIGURE_OPTIONS+=("--enable-libx264")
 fi
 
 if $NONFREE_AND_GPL; then
-if build "x265"; then
-  execute hg clone http://hg.videolan.org/x265 ${PACKAGES}/x265
-  cd ${PACKAGES}/x265/build/linux || exit
+  if build "x265"; then
+    execute hg clone http://hg.videolan.org/x265 ${PACKAGES}/x265
+    cd ${PACKAGES}/x265/build/linux || exit
+    mkdir -p 8bit 10bit 12bit
+    cd 12bit
+    execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_BUILD_TYPE=Release -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_SHARED=OFF -DBUILD_SHARED_LIBS=OFF  -DENABLE_CLI=OFF -DMAIN12=ON ../../../source
+    execute make -j $MJOBS
+    cd ../10bit
+    execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_BUILD_TYPE=Release -DHIGH_BIT_DEPTH=ON -DEXPORT_C_API=OFF -DENABLE_SHARED=OFF -DBUILD_SHARED_LIBS=OFF  -DENABLE_CLI=OFF ../../../source
+    execute make -j $MJOBS
+    cd ../8bit
+    ln -sf ../10bit/libx265.a libx265_main10.a
+    ln -sf ../12bit/libx265.a libx265_main12.a
+    execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_BUILD_TYPE=Release -DENABLE_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DEXTRA_LIB="x265_main10.a;x265_main12.a;-ldl" -DEXTRA_LINK_FLAGS=-L. -DLINKED_10BIT=ON -DLINKED_12BIT=ON ../../../source
+    execute make -j $MJOBS
+    mv libx265.a libx265_main.a
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      execute libtool -static -o libx265.a libx265_main.a libx265_main10.a libx265_main12.a 2>/dev/null
+    else
+      execute ar -M <<EOF
+CREATE libx265.a
+ADDLIB libx265_main.a
+ADDLIB libx265_main10.a
+ADDLIB libx265_main12.a
+SAVE
+END
+EOF
+    fi
+    
+    execute make install
 
-  execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DHIGH_BIT_DEPTH=ON -DENABLE_HDR10_PLUS=ON -DENABLE_SHARED=off -DBUILD_SHARED_LIBS=OFF ../../source
-  execute make -j $MJOBS
-  execute make install
+    if [ -n "$LDEXEFLAGS" ]; then
+      sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${WORKSPACE}/lib/pkgconfig/x265.pc" # The -i.backup is intended and required on MacOS: https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
+    fi
 
-  if [ -n "$LDEXEFLAGS" ]; then
-    sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${WORKSPACE}/lib/pkgconfig/x265.pc" # The -i.backup is intended and required on MacOS: https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
+    build_done "x265"
   fi
-
-  build_done "x265"
-fi
 CONFIGURE_OPTIONS+=("--enable-libx265")
 fi
 
@@ -498,41 +522,41 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libvpx")
 
 if $NONFREE_AND_GPL; then
-if build "xvidcore"; then
-  download "https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.gz"
-  cd build/generic || exit
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
-  execute make -j $MJOBS
-  execute make install
+  if build "xvidcore"; then
+    download "https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.gz"
+    cd build/generic || exit
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
+    execute make -j $MJOBS
+    execute make install
 
-  if [[ -f ${WORKSPACE}/lib/libxvidcore.4.dylib ]]; then
-    execute rm "${WORKSPACE}/lib/libxvidcore.4.dylib"
+    if [[ -f ${WORKSPACE}/lib/libxvidcore.4.dylib ]]; then
+      execute rm "${WORKSPACE}/lib/libxvidcore.4.dylib"
+    fi
+
+    if [[ -f ${WORKSPACE}/lib/libxvidcore.so ]]; then
+      execute rm "${WORKSPACE}"/lib/libxvidcore.so*
+    fi
+
+    build_done "xvidcore"
   fi
-
-  if [[ -f ${WORKSPACE}/lib/libxvidcore.so ]]; then
-    execute rm "${WORKSPACE}"/lib/libxvidcore.so*
-  fi
-
-  build_done "xvidcore"
-fi
 CONFIGURE_OPTIONS+=("--enable-libxvid")
 fi
 
 if $NONFREE_AND_GPL; then
-if build "vid_stab"; then
-  download "https://github.com/georgmartius/vid.stab/archive/v1.1.0.tar.gz" "vid.stab-1.1.0.tar.gz"
+  if build "vid_stab"; then
+    download "https://github.com/georgmartius/vid.stab/archive/v1.1.0.tar.gz" "vid.stab-1.1.0.tar.gz"
 
-  if $MACOS_M1; then
-    curl -s -o "$PACKAGES/vid.stab-1.1.0/fix_cmake_quoting.patch" https://raw.githubusercontent.com/Homebrew/formula-patches/5bf1a0e0cfe666ee410305cece9c9c755641bfdf/libvidstab/fix_cmake_quoting.patch
-    patch -p1 <fix_cmake_quoting.patch
+    if $MACOS_M1; then
+      curl -s -o "$PACKAGES/vid.stab-1.1.0/fix_cmake_quoting.patch" https://raw.githubusercontent.com/Homebrew/formula-patches/5bf1a0e0cfe666ee410305cece9c9c755641bfdf/libvidstab/fix_cmake_quoting.patch
+      patch -p1 <fix_cmake_quoting.patch
+    fi
+
+    execute cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DUSE_OMP=OFF -DENABLE_SHARED=off .
+    execute make
+    execute make install
+
+    build_done "vid_stab"
   fi
-
-  execute cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DUSE_OMP=OFF -DENABLE_SHARED=off .
-  execute make
-  execute make install
-
-  build_done "vid_stab"
-fi
 CONFIGURE_OPTIONS+=("--enable-libvidstab")
 fi
 
@@ -618,14 +642,14 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libtheora")
 
 if $NONFREE_AND_GPL; then
-if build "fdk_aac"; then
-  download "https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download?use_mirror=gigenet" "fdk-aac-2.0.2.tar.gz"
-  execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static --enable-pic
-  execute make -j $MJOBS
-  execute make install
+  if build "fdk_aac"; then
+    download "https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download?use_mirror=gigenet" "fdk-aac-2.0.2.tar.gz"
+    execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static --enable-pic
+    execute make -j $MJOBS
+    execute make install
 
-  build_done "fdk_aac"
-fi
+    build_done "fdk_aac"
+  fi
 CONFIGURE_OPTIONS+=("--enable-libfdk-aac")
 fi
 
@@ -690,20 +714,20 @@ if build "libsdl"; then
 fi
 
 if $NONFREE_AND_GPL; then
-if build "srt"; then
-  download "https://github.com/Haivision/srt/archive/v1.4.3.tar.gz" "srt-1.4.3.tar.gz"
-  export OPENSSL_ROOT_DIR="${WORKSPACE}"
-  export OPENSSL_LIB_DIR="${WORKSPACE}"/lib
-  export OPENSSL_INCLUDE_DIR="${WORKSPACE}"/include/
-  execute cmake . -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_APPS=OFF -DUSE_STATIC_LIBSTDCXX=ON
-  execute make install
+  if build "srt"; then
+    download "https://github.com/Haivision/srt/archive/v1.4.3.tar.gz" "srt-1.4.3.tar.gz"
+    export OPENSSL_ROOT_DIR="${WORKSPACE}"
+    export OPENSSL_LIB_DIR="${WORKSPACE}"/lib
+    export OPENSSL_INCLUDE_DIR="${WORKSPACE}"/include/
+    execute cmake . -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_APPS=OFF -DUSE_STATIC_LIBSTDCXX=ON
+    execute make install
 
-  if [ -n "$LDEXEFLAGS" ]; then
-    sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${WORKSPACE}"/lib/pkgconfig/srt.pc # The -i.backup is intended and required on MacOS: https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
+    if [ -n "$LDEXEFLAGS" ]; then
+      sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${WORKSPACE}"/lib/pkgconfig/srt.pc # The -i.backup is intended and required on MacOS: https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
+    fi
+
+    build_done "srt"
   fi
-
-  build_done "srt"
-fi
 CONFIGURE_OPTIONS+=("--enable-libsrt")
 fi
 
@@ -754,9 +778,7 @@ fi
 build "ffmpeg"
 # use latest commit from top of version head, not the tagged one
 # https://git.ffmpeg.org/gitweb/ffmpeg.git/shortlog/refs/heads/release/4.4
-export LatestHEADSnapshot=$(curl -sL "https://git.ffmpeg.org/gitweb/ffmpeg.git/shortlog/refs/heads/release/4.4" | grep -m1 -A5 "<table class=\"shortlog\">" | grep ".tar.gz" | awk -F'/snapshot/' '{print $2}' | awk -F'"' '{print $1}')
-# Currently, 8d172d940946dce59841b1c95059f3b38f68ca61.tar.gz
-download "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/${LatestHEADSnapshot}"
+download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/4.4.tar.gz" "FFmpeg-release-4.4.tar.gz"
 # shellcheck disable=SC2086
 ./configure "${CONFIGURE_OPTIONS[@]}" \
   --disable-debug \
