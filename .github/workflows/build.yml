@@ -15,10 +15,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: install libva-dev
+      - name: install dev dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libva-dev
+          sudo apt-fast -qq update -y
+          sudo apt-fast -qq install -y libva-dev libvdpau-dev libnuma-dev ninja-build libtool
+          sudo -EH pip3 install meson
 
       - name: build ffmpeg
         run: |
@@ -44,6 +45,7 @@ jobs:
 
       - name: build ffmpeg
         run: |
+          sudo -EH pip3 install meson
           while sleep 300; do echo "=====[ $SECONDS seconds still running ]====="; done &
           SKIPINSTALL=yes VERBOSE=yes ./build-ffmpeg --build --enable-gpl-and-non-free
           kill %1
