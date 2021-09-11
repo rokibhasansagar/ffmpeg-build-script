@@ -434,7 +434,7 @@ fi
 
 if command_exists "cargo"; then
   if build "rav1e"; then
-    cargo install cargo-c
+    execute cargo install cargo-c
     download "https://github.com/xiph/rav1e/archive/refs/tags/v0.5.0-beta.tar.gz"
     execute cargo cinstall --prefix="${WORKSPACE}" --library-type=staticlib --crt-static --release
     build_done "rav1e"
@@ -561,7 +561,8 @@ CONFIGURE_OPTIONS+=("--enable-libvidstab")
 fi
 
 if build "av1"; then
-  download "https://aomedia.googlesource.com/aom/+archive/7fadc0e77130efb05f52979b0deaba9b6a1bba6d.tar.gz" "av1.tar.gz" "av1"
+  # https://aomedia.googlesource.com/aom/+/refs/tags/v3.1.2 == ae2be8030200925895fa6e98bd274ffdb595cbf6
+  download "https://aomedia.googlesource.com/aom/+archive/ae2be8030200925895fa6e98bd274ffdb595cbf6.tar.gz" "av1.tar.gz" "av1"
   make_dir "$PACKAGES"/aom_build
   cd "$PACKAGES"/aom_build || exit
   if $MACOS_M1; then
@@ -575,6 +576,15 @@ if build "av1"; then
   build_done "av1"
 fi
 CONFIGURE_OPTIONS+=("--enable-libaom")
+
+if build "dav1d"; then
+  download "https://code.videolan.org/videolan/dav1d/-/archive/0.9.2/dav1d-0.9.2.tar.gz"
+  make_dir build
+  execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static --enable_tests=false
+  execute ninja -C build
+  execute ninja -C build install
+fi
+CONFIGURE_OPTIONS+=("--enable-libdav1d")
 
 ##
 ## audio library
