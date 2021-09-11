@@ -439,7 +439,7 @@ fi
 
 if command_exists "cargo"; then
   if build "rav1e"; then
-    # execute cargo install cargo-c
+    execute cargo install cargo-c
     download "https://github.com/xiph/rav1e/archive/refs/tags/v0.5.0-beta.tar.gz"
     execute cargo cinstall --prefix="${WORKSPACE}" --library-type=staticlib --crt-static --release
     build_done "rav1e"
@@ -494,7 +494,6 @@ CREATE libx265.a
 ADDLIB libx265_main.a
 ADDLIB libx265_main10.a
 ADDLIB libx265_main12.a
-ADDLIB libhdr10plus.a
 SAVE
 END
 EOF
@@ -591,6 +590,7 @@ if command_exists "meson"; then
     execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static
     execute ninja -C build
     execute ninja -C build install
+    find "${WORKSPACE}"/ -type f -name "dav1d.pc" 2>/dev/null
     cp "${WORKSPACE}/lib/x86_64-linux-gnu/pkgconfig/dav1d.pc" "${WORKSPACE}/lib/pkgconfig/dav1d.pc"
   fi
   CONFIGURE_OPTIONS+=("--enable-libdav1d")
