@@ -589,6 +589,7 @@ if command_exists "meson"; then
     execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static
     execute ninja -C build
     execute ninja -C build install
+    cp "${WORKSPACE}/lib/x86_64-linux-gnu/pkgconfig/dav1d.pc" "${WORKSPACE}/lib/pkgconfig/dav1d.pc"
   fi
   CONFIGURE_OPTIONS+=("--enable-libdav1d")
 fi
