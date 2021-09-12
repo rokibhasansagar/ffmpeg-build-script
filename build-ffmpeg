@@ -563,10 +563,10 @@ if command_exists "meson"; then
     if build "dav1d"; then
       download "https://code.videolan.org/videolan/dav1d/-/archive/0.9.2/dav1d-0.9.2.tar.gz"
       make_dir build
-      execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static
+      execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static --libdir="${WORKSPACE}"/lib
       execute ninja -C build
       execute ninja -C build install
-      cp -f build/meson-private/dav1d.pc "${WORKSPACE}"/lib/pkgconfig/dav1d.pc 2>/dev/null
+      build_done "dav1d"
     fi
     CONFIGURE_OPTIONS+=("--enable-libdav1d")
   fi
@@ -679,7 +679,7 @@ if command_exists "libtoolize"; then
   if build "zimg"; then
     download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.3.tar.gz"
     execute ./autogen.sh
-    execute ./configure --prefix="${WORKSPACE}"
+    execute ./configure --prefix="${WORKSPACE}" --enable-static
     execute make -j $MJOBS
     execute make install
     build_done "zimg"
