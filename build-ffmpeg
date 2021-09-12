@@ -257,6 +257,7 @@ fi
 
 mkdir -p "$PACKAGES"
 mkdir -p "$WORKSPACE"
+mkdir -p "${WORKSPACE}/lib/pkgconfig"
 
 export PATH="${WORKSPACE}/bin:$PATH"
 PKG_CONFIG_PATH="/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig"
@@ -288,11 +289,12 @@ fi
 
 if ! command_exists "python"; then
   echo "Python command not found. Lv2 filter will not be available."
-  
-  if ! command_exists "meson"; then
-    echo "meson command not found. dav1d decoder will not be available."
+fi
+
+if ! command_exists "meson"; then
+  if ! command_exists "ninja"; then
+    echo "meson and/or ninja command(s) not found. dav1d decoder will not be available."
   fi
-  
 fi
 
 ##
@@ -314,15 +316,12 @@ if command_exists "python"; then
     execute ./waf configure --prefix="${WORKSPACE}" --lv2-user
     execute ./waf
     execute ./waf install
-
     build_done "lv2"
   fi
-
   if build "waflib"; then
     download "https://gitlab.com/drobilla/autowaf/-/archive/b600c928b221a001faeab7bd92786d0b25714bc8/autowaf-b600c928b221a001faeab7bd92786d0b25714bc8.tar.gz" "autowaf.tar.gz"
     build_done "waflib"
   fi
-
   if build "serd"; then
     download "https://gitlab.com/drobilla/serd/-/archive/v0.30.10/serd-v0.30.10.tar.gz" "serd-v0.30.10.tar.gz"
     execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/serd-v0.30.10/waflib/"
@@ -331,36 +330,29 @@ if command_exists "python"; then
     execute ./waf install
     build_done "serd"
   fi
-
   if build "pcre"; then
     download "https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz" "pcre-8.44.tar.gz"
     execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
     execute make -j $MJOBS
     execute make install
-
     build_done "pcre"
   fi
-
   if build "sord"; then
     download "https://gitlab.com/drobilla/sord/-/archive/v0.16.8/sord-v0.16.8.tar.gz" "sord-v0.16.8.tar.gz"
     execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/sord-v0.16.8/waflib/"
     execute ./waf configure --prefix="${WORKSPACE}" CFLAGS="${CFLAGS}" --static --no-shared --no-utils
     execute ./waf CFLAGS="${CFLAGS}"
     execute ./waf install
-
     build_done "sord"
   fi
-
   if build "sratom"; then
     download "https://gitlab.com/lv2/sratom/-/archive/v0.6.8/sratom-v0.6.8.tar.gz" "sratom-v0.6.8.tar.gz"
     execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/sratom-v0.6.8/waflib/"
     execute ./waf configure --prefix="${WORKSPACE}" --static --no-shared
     execute ./waf
     execute ./waf install
-
     build_done "sratom"
   fi
-
   if build "lilv"; then
     download "https://gitlab.com/lv2/lilv/-/archive/v0.24.12/lilv-v0.24.12.tar.gz" "lilv-v0.24.12.tar.gz"
     execute cp -r "${PACKAGES}"/autowaf/* "${PACKAGES}/lilv-v0.24.12/waflib/"
@@ -370,7 +362,6 @@ if command_exists "python"; then
     CFLAGS+=" -I$WORKSPACE/include/lilv-0"
     build_done "lilv"
   fi
-
   CONFIGURE_OPTIONS+=("--enable-lv2")
 fi
 
@@ -451,17 +442,14 @@ if $NONFREE_AND_GPL; then
   if build "x264"; then
     execute git clone https://code.videolan.org/videolan/x264.git ${PACKAGES}/x264
     cd ${PACKAGES}/x264/ || exit
-
     if [[ "$OSTYPE" == "linux-gnu" ]]; then
       execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic CXXFLAGS="-fPIC"
     else
       execute ./configure --prefix="${WORKSPACE}" --enable-static --enable-pic
     fi
-
     execute make -j $MJOBS
     execute make install
     execute make install-lib-static
-
     build_done "x264"
   fi
 CONFIGURE_OPTIONS+=("--enable-libx264")
@@ -485,26 +473,23 @@ if $NONFREE_AND_GPL; then
     execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_BUILD_TYPE=Release -DENABLE_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DEXTRA_LIB="x265_main10.a;x265_main12.a;libhdr10plus.a;-ldl" -DEXTRA_LINK_FLAGS=-L. -DLINKED_10BIT=ON -DLINKED_12BIT=ON ../../../source
     execute make -j $MJOBS
     mv libx265.a libx265_main.a
-    
     if [[ "$OSTYPE" == "darwin"* ]]; then
-      execute libtool -static -o libx265.a libx265_main.a libx265_main10.a libx265_main12.a 2>/dev/null
+      execute libtool -static -o libx265.a libx265_main.a libx265_main10.a libx265_main12.a libhdr10plus.a 2>/dev/null
     else
       execute ar -M <<EOF
 CREATE libx265.a
 ADDLIB libx265_main.a
 ADDLIB libx265_main10.a
 ADDLIB libx265_main12.a
+ADDLIB libhdr10plus.a
 SAVE
 END
 EOF
     fi
-    
     execute make install
-
     if [ -n "$LDEXEFLAGS" ]; then
       sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${WORKSPACE}/lib/pkgconfig/x265.pc" # The -i.backup is intended and required on MacOS: https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
     fi
-
     build_done "x265"
   fi
 CONFIGURE_OPTIONS+=("--enable-libx265")
@@ -512,17 +497,14 @@ fi
 
 if build "libvpx"; then
   download "https://github.com/webmproject/libvpx/archive/refs/tags/v1.10.0.tar.gz" "libvpx-1.10.0.tar.gz"
-
   if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Applying Darwin patch"
     sed "s/,--version-script//g" build/make/Makefile >build/make/Makefile.patched
     sed "s/-Wl,--no-undefined -Wl,-soname/-Wl,-undefined,error -Wl,-install_name/g" build/make/Makefile.patched >build/make/Makefile
   fi
-
   execute ./configure --prefix="${WORKSPACE}" --disable-unit-tests --disable-shared --as=yasm
   execute make -j $MJOBS
   execute make install
-
   build_done "libvpx"
 fi
 CONFIGURE_OPTIONS+=("--enable-libvpx")
@@ -534,15 +516,12 @@ if $NONFREE_AND_GPL; then
     execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
     execute make -j $MJOBS
     execute make install
-
     if [[ -f ${WORKSPACE}/lib/libxvidcore.4.dylib ]]; then
       execute rm "${WORKSPACE}/lib/libxvidcore.4.dylib"
     fi
-
     if [[ -f ${WORKSPACE}/lib/libxvidcore.so ]]; then
       execute rm "${WORKSPACE}"/lib/libxvidcore.so*
     fi
-
     build_done "xvidcore"
   fi
 CONFIGURE_OPTIONS+=("--enable-libxvid")
@@ -551,16 +530,13 @@ fi
 if $NONFREE_AND_GPL; then
   if build "vid_stab"; then
     download "https://github.com/georgmartius/vid.stab/archive/v1.1.0.tar.gz" "vid.stab-1.1.0.tar.gz"
-
     if $MACOS_M1; then
       curl -s -o "$PACKAGES/vid.stab-1.1.0/fix_cmake_quoting.patch" https://raw.githubusercontent.com/Homebrew/formula-patches/5bf1a0e0cfe666ee410305cece9c9c755641bfdf/libvidstab/fix_cmake_quoting.patch
       patch -p1 <fix_cmake_quoting.patch
     fi
-
     execute cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DUSE_OMP=OFF -DENABLE_SHARED=off .
     execute make
     execute make install
-
     build_done "vid_stab"
   fi
 CONFIGURE_OPTIONS+=("--enable-libvidstab")
@@ -578,22 +554,22 @@ if build "av1"; then
   fi
   execute make -j $MJOBS
   execute make install
-
   build_done "av1"
 fi
 CONFIGURE_OPTIONS+=("--enable-libaom")
 
 if command_exists "meson"; then
-  if build "dav1d"; then
-    download "https://code.videolan.org/videolan/dav1d/-/archive/0.9.2/dav1d-0.9.2.tar.gz"
-    make_dir build
-    execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static
-    execute ninja -C build
-    execute ninja -C build install
-    find "${WORKSPACE}"/ -type f -name "dav1d.pc" 2>/dev/null
-    cp "${WORKSPACE}/lib/x86_64-linux-gnu/pkgconfig/dav1d.pc" "${WORKSPACE}/lib/pkgconfig/dav1d.pc"
+  if command_exists "ninja"; then
+    if build "dav1d"; then
+      download "https://code.videolan.org/videolan/dav1d/-/archive/0.9.2/dav1d-0.9.2.tar.gz"
+      make_dir build
+      execute meson build --prefix="${WORKSPACE}" --buildtype=release --default-library=static
+      execute ninja -C build
+      execute ninja -C build install
+      cp -f build/meson-private/dav1d.pc "${WORKSPACE}"/lib/pkgconfig/dav1d.pc 2>/dev/null
+    fi
+    CONFIGURE_OPTIONS+=("--enable-libdav1d")
   fi
-  CONFIGURE_OPTIONS+=("--enable-libdav1d")
 fi
 
 ##
@@ -605,7 +581,6 @@ if build "opencore"; then
   execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
   execute make -j $MJOBS
   execute make install
-
   build_done "opencore"
 fi
 CONFIGURE_OPTIONS+=("--enable-libopencore_amrnb" "--enable-libopencore_amrwb")
@@ -615,7 +590,6 @@ if build "lame"; then
   execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
   execute make -j $MJOBS
   execute make install
-
   build_done "lame"
 fi
 CONFIGURE_OPTIONS+=("--enable-libmp3lame")
@@ -625,7 +599,6 @@ if build "opus"; then
   execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
   execute make -j $MJOBS
   execute make install
-
   build_done "opus"
 fi
 CONFIGURE_OPTIONS+=("--enable-libopus")
@@ -637,13 +610,11 @@ if build "libogg"; then
   execute make install
   build_done "libogg"
 fi
-
 if build "libvorbis"; then
   download "https://ftp.osuosl.org/pub/xiph/releases/vorbis/libvorbis-1.3.6.tar.gz"
   execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --enable-static --disable-shared --disable-oggtest
   execute make -j $MJOBS
   execute make install
-
   build_done "libvorbis"
 fi
 CONFIGURE_OPTIONS+=("--enable-libvorbis")
@@ -656,7 +627,6 @@ if build "libtheora"; then
   execute ./configure --prefix="${WORKSPACE}" --with-ogg-libraries="${WORKSPACE}"/lib --with-ogg-includes="${WORKSPACE}"/include/ --with-vorbis-libraries="${WORKSPACE}"/lib --with-vorbis-includes="${WORKSPACE}"/include/ --enable-static --disable-shared --disable-oggtest --disable-vorbistest --disable-examples --disable-asm --disable-spec
   execute make -j $MJOBS
   execute make install
-
   build_done "libtheora"
 fi
 CONFIGURE_OPTIONS+=("--enable-libtheora")
@@ -667,11 +637,14 @@ if $NONFREE_AND_GPL; then
     execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static --enable-pic
     execute make -j $MJOBS
     execute make install
-
     build_done "fdk_aac"
   fi
 CONFIGURE_OPTIONS+=("--enable-libfdk-aac")
 fi
+
+##
+## image library
+##
 
 if build "libtiff"; then
   download "https://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz"
@@ -680,7 +653,6 @@ if build "libtiff"; then
   execute make install
   build_done "libtiff"
 fi
-
 if build "libpng"; then
   download "https://deac-riga.dl.sourceforge.net/project/libpng/libpng16/1.6.37/libpng-1.6.37.tar.gz"
   export LDFLAGS="${LDFLAGS}"
@@ -691,10 +663,6 @@ if build "libpng"; then
   build_done "libpng"
 fi
 
-##
-## image library
-##
-
 if build "libwebp"; then
   download "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.0.tar.gz" "libwebp-1.2.0.tar.gz"
   execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
@@ -703,7 +671,6 @@ if build "libwebp"; then
   execute cmake -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON ../
   execute make -j $MJOBS
   execute make install
-
   build_done "libwebp"
 fi
 CONFIGURE_OPTIONS+=("--enable-libwebp")
@@ -729,7 +696,6 @@ if build "libsdl"; then
   execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
   execute make -j $MJOBS
   execute make install
-
   build_done "libsdl"
 fi
 
@@ -741,11 +707,9 @@ if $NONFREE_AND_GPL; then
     export OPENSSL_INCLUDE_DIR="${WORKSPACE}"/include/
     execute cmake . -DCMAKE_INSTALL_PREFIX="${WORKSPACE}" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_INSTALL_INCLUDEDIR=include -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_APPS=OFF -DUSE_STATIC_LIBSTDCXX=ON
     execute make install
-
     if [ -n "$LDEXEFLAGS" ]; then
       sed -i.backup 's/-lgcc_s/-lgcc_eh/g' "${WORKSPACE}"/lib/pkgconfig/srt.pc # The -i.backup is intended and required on MacOS: https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
     fi
-
     build_done "srt"
   fi
 CONFIGURE_OPTIONS+=("--enable-libsrt")
@@ -766,15 +730,12 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
     CFLAGS+=" -I/usr/local/cuda/include"
     LDFLAGS+=" -L/usr/local/cuda/lib64"
     CONFIGURE_OPTIONS+=("--enable-cuda-nvcc" "--enable-cuvid" "--enable-nvenc" "--enable-cuda-llvm")
-
     if [ -z "$LDEXEFLAGS" ]; then
       CONFIGURE_OPTIONS+=("--enable-libnpp") # Only libnpp cannot be statically linked.
     fi
-
     # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
     CONFIGURE_OPTIONS+=("--nvccflags=-gencode arch=compute_52,code=sm_52")
   fi
-
   # Vaapi doesn't work well with static links FFmpeg.
   if [ -z "$LDEXEFLAGS" ]; then
     # If the libva development SDK is installed, enable vaapi.
