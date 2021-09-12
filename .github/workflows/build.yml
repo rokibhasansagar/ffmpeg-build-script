@@ -24,13 +24,15 @@ jobs:
       - name: build ffmpeg
         run: |
           while sleep 300; do echo "=====[ $SECONDS seconds still running ]====="; done &
-          SKIPINSTALL=yes VERBOSE=yes ./build-ffmpeg --build --enable-gpl-and-non-free
+          SKIPINSTALL=yes VERBOSE=yes NUMJOBS=4 ./build-ffmpeg --build --enable-gpl-and-non-free
           kill %1
       - name: check shared library
         run: |
           ldd ./workspace/bin/ffmpeg
       - name: test run ffmepg
         run: |
+          ./workspace/bin/ffmpeg -hide_banner -decoders
+          ./workspace/bin/ffmpeg -hide_banner -encoders
           ./workspace/bin/ffmpeg -buildconf
       - name: clean up
         run: |
@@ -43,9 +45,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: install dev dependencies
+        run: |
+          brew install -q bash ninja make cmake automake libtool
+          pip3 install meson
       - name: build ffmpeg
         run: |
-          sudo -EH pip3 install meson
           while sleep 300; do echo "=====[ $SECONDS seconds still running ]====="; done &
           SKIPINSTALL=yes VERBOSE=yes ./build-ffmpeg --build --enable-gpl-and-non-free
           kill %1
@@ -54,6 +59,8 @@ jobs:
           otool -L ./workspace/bin/ffmpeg
       - name: test run ffmepg
         run: |
+          ./workspace/bin/ffmpeg -hide_banner -decoders
+          ./workspace/bin/ffmpeg -hide_banner -encoders
           ./workspace/bin/ffmpeg -buildconf
       - name: clean up
         run: |
@@ -79,6 +86,8 @@ jobs:
           docker build -t ffmpeg:ubuntu -f Dockerfile .
       - name: test run ffmepg
         run: |
+          docker run --rm ffmpeg:ubuntu -hide_banner -decoders
+          docker run --rm ffmpeg:ubuntu -hide_banner -encoders
           docker run --rm ffmpeg:ubuntu -buildconf
 
   build-cuda-ubuntu-docker:
@@ -103,6 +112,8 @@ jobs:
           docker build -t ffmpeg:cuda-ubuntu -f cuda-ubuntu.dockerfile .
       - name: test run ffmepg
         run: |
+          docker run --rm ffmpeg:cuda-ubuntu -hide_banner -decoders
+          docker run --rm ffmpeg:cuda-ubuntu -hide_banner -encoders
           docker run --rm ffmpeg:cuda-ubuntu -buildconf
 
   build-cuda-centos-docker:
@@ -127,6 +138,8 @@ jobs:
           docker build -t ffmpeg:cuda-centos -f cuda-centos.dockerfile .
       - name: test run ffmepg
         run: |
+          docker run --rm ffmpeg:cuda-centos -hide_banner -decoders
+          docker run --rm ffmpeg:cuda-centos -hide_banner -encoders
           docker run --rm ffmpeg:cuda-centos -buildconf
 
   build-full-static:
@@ -149,4 +162,6 @@ jobs:
           docker build -t ffmpeg:cuda-static -f full-static.dockerfile .
       - name: test run ffmepg
         run: |
+          docker run --rm ffmpeg:cuda-static -hide_banner -decoders
+          docker run --rm ffmpeg:cuda-static -hide_banner -encoders
           docker run --rm ffmpeg:cuda-static -buildconf
