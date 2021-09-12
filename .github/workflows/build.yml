@@ -47,7 +47,7 @@ jobs:
 
       - name: install dev dependencies
         run: |
-          brew install -q bash ninja make cmake automake libtool
+          brew install -q bash ninja make cmake automake libtool mercurial
           pip3 install meson
       - name: build ffmpeg
         run: |
