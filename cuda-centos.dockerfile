@@ -7,7 +7,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES compute,utility,video
 
 RUN yum group install -y "Development Tools" \
     && yum install -y curl libva-devel python3 \
-    && dnf --enablerepo=powertools install meson ninja-build \
+    && dnf --enablerepo=powertools install -y meson ninja-build \
     && rm -rf /var/cache/yum/* /var/cache/dnf/* \
     && yum clean all
 
