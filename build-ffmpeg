@@ -663,7 +663,7 @@ if command_exists "python3"; then
 fi
 
 if build "opencore" "0.1.5"; then
-  download "https://sourceforge.net/projects/opencore-amr/files/opencore-amr/opencore-amr-0.1.5.tar.gz/download" "opencore-amr-0.1.5.tar.gz"
+  download "https://sourceforge.net/projects/opencore-amr/files/opencore-amr/opencore-amr-0.1.5.tar.gz/download?use_mirror=gigenet" "opencore-amr-0.1.5.tar.gz"
   execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
   execute make -j $MJOBS
   execute make install
@@ -673,7 +673,7 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libopencore_amrnb" "--enable-libopencore_amrwb")
 
 if build "lame" "3.100"; then
-  download "https://sourceforge.net/projects/lame/files/lame/3.100/lame-3.100.tar.gz/download" "lame-3.100.tar.gz"
+  download "https://sourceforge.net/projects/lame/files/lame/3.100/lame-3.100.tar.gz/download?use_mirror=gigenet" "lame-3.100.tar.gz"
   execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
   execute make -j $MJOBS
   execute make install
@@ -725,7 +725,7 @@ CONFIGURE_OPTIONS+=("--enable-libtheora")
 
 if $NONFREE_AND_GPL; then
   if build "fdk_aac" "2.0.2"; then
-    download "https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download" "fdk-aac-2.0.2.tar.gz"
+    download "https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.2.tar.gz/download?use_mirror=gigenet" "fdk-aac-2.0.2.tar.gz"
     execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static --enable-pic
     execute make -j $MJOBS
     execute make install
@@ -747,7 +747,7 @@ if build "libtiff" "4.3.0"; then
   build_done "libtiff" "4.3.0"
 fi
 if build "libpng" "1.6.37"; then
-  download "https://sourceforge.net/projects/libpng/files/libpng16/1.6.37/libpng-1.6.37.tar.gz/download" "libpng-1.6.37.tar.gz"
+  download "https://sourceforge.net/projects/libpng/files/libpng16/1.6.37/libpng-1.6.37.tar.gz/download?use_mirror=gigenet" "libpng-1.6.37.tar.gz"
   export LDFLAGS="${LDFLAGS}"
   export CPPFLAGS="${CFLAGS}"
   execute ./configure --prefix="${WORKSPACE}" --disable-shared --enable-static
