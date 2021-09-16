@@ -7,9 +7,10 @@ ENV NVIDIA_DRIVER_CAPABILITIES compute,utility,video
 
 RUN yum group install -y "Development Tools" \
     && yum install -y curl libva-devel python3 \
-    && dnf --enablerepo=powertools install -y meson ninja-build \
+    && yum install -y meson ninja-build --enablerepo=powertools \
     && rm -rf /var/cache/yum/* /var/cache/dnf/* \
-    && yum clean all
+    && yum clean all \
+    && alternatives --set python /usr/bin/python3
 
 WORKDIR /app
 COPY ./build-ffmpeg /app/build-ffmpeg
