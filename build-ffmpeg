@@ -70,14 +70,14 @@ download() {
 
   if [ ! -f "$DOWNLOAD_PATH/$DOWNLOAD_FILE" ]; then
     echo "Downloading $1 as $DOWNLOAD_FILE"
-    curl -L --silent -o "$DOWNLOAD_PATH/$DOWNLOAD_FILE" "$1"
+    curl -L --silent --retry 3 -o "$DOWNLOAD_PATH/$DOWNLOAD_FILE" "$1"
 
     EXITCODE=$?
     if [ $EXITCODE -ne 0 ]; then
       echo ""
       echo "Failed to download $1. Exitcode $EXITCODE. Retrying in 10 seconds"
       sleep 10
-      curl -L --silent -o "$DOWNLOAD_PATH/$DOWNLOAD_FILE" "$1"
+      curl -L --silent --retry 3 -o "$DOWNLOAD_PATH/$DOWNLOAD_FILE" "$1"
     fi
 
     EXITCODE=$?
