@@ -32,6 +32,7 @@ if [[ -n "$NUMJOBS" ]]; then
   MJOBS="$NUMJOBS"
 elif [[ -f /proc/cpuinfo ]]; then
   MJOBS=$(grep -c processor /proc/cpuinfo)
+  MJOBS=$((MJOBS*2))  # double build threads for testing purpose
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   MJOBS=$(sysctl -n machdep.cpu.thread_count)
   CONFIGURE_OPTIONS=("--enable-videotoolbox")
@@ -851,7 +852,7 @@ fi
 ## FFmpeg
 ##
 
-EXTRA_VERSION=""
+EXTRA_VERSION="fr3aky"    # Testing
 if [[ "$OSTYPE" == "darwin"* ]]; then
   EXTRA_VERSION="${FFMPEG_VERSION}"
 fi
@@ -874,7 +875,7 @@ download "https://github.com/FFmpeg/FFmpeg/archive/refs/heads/release/$FFMPEG_VE
   --pkgconfigdir="$WORKSPACE/lib/pkgconfig" \
   --pkg-config-flags="--static" \
   --prefix="${WORKSPACE}" \
-  --extra-version="${EXTRA_VERSION}"
+  --extra-version="\${EXTRA_VERSION}"      # Escape the $-sign
 
 execute make -j $MJOBS
 execute make install
